@@ -77,7 +77,7 @@ def _pandoc_impl(ctx):
         executable = toolchain.pandoc.files.to_list()[0].path,
         arguments = cli_args,
         inputs = depset(
-            direct = ctx.attr.src.files.to_list() + ctx.attr.css.files.to_list(),
+            direct = ctx.attr.src.files.to_list(),
             transitive = [toolchain.pandoc.files],
         ),
         outputs = [ctx.outputs.output],
