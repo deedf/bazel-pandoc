@@ -52,39 +52,53 @@ PANDOC_EXTENSIONS = {
 def _pandoc_impl(ctx):
     toolchain = ctx.toolchains["@bazel_pandoc//:pandoc_toolchain_type"]
     cli_args = []
-    all_outputs = [ctx.outputs.output]
-    all_data_inputs = []
-    all_data_inputs.extend(ctx.attr.data)
-    cli_args.extend(ctx.attr.options)
+    pandoc_inputs = ctx.attr.src.files.to_list()
+    pandoc_outputs = [ctx.outputs.output]
+    data_inputs = []
+    data_outputs = []
+    if ctx.attr.standalone:
+        cli_args.extend(["-s"])
+    if ctx.attr.self_contained:
+        cli_args.extend(["--self-contained"])
     if ctx.attr.from_format:
         cli_args.extend(["--from", ctx.attr.from_format])
     if ctx.attr.to_format:
         cli_args.extend(["--to", ctx.attr.to_format])
     if ctx.attr.css:
-        all_data_inputs.extend([ctx.attr.css])
+        pandoc_inputs.extend([ctx.file.css])
         cli_args.extend(["-c", ctx.file.css.path])
+        if not ctx.attr.self_contained:
+            data_inputs.extend([ctx.file.css])
     cli_args.extend(["-o", ctx.outputs.output.path])
-    cli_args.extend([ctx.file.src.path])
-    for target in all_data_inputs:
+    cli_args.extend(["--resource-path",
+                     ctx.label.workspace_root])
+    for target in ctx.attr.data:
         for df in target.files.to_list():
-            outfile = ctx.actions.declare_file(df.path)
-            all_outputs.extend([outfile])
-            ctx.actions.expand_template(template=df,
-                                        output = outfile,
-                                        substitutions={})
+            if ctx.attr.self_contained:
+                pandoc_inputs.append(df)
+            else:
+                data_inputs.append(df)
+    for df in data_inputs:
+        outfile = ctx.actions.declare_file(df.path)
+        data_outputs.extend([outfile])
+        ctx.actions.expand_template(template=df,
+                                    output = outfile,
+                                    substitutions={})
+    cli_args.extend(ctx.attr.options)
+    cli_args.extend([ctx.file.src.path])
     ctx.actions.run(
         mnemonic = "Pandoc",
         executable = toolchain.pandoc.files.to_list()[0].path,
         arguments = cli_args,
         inputs = depset(
-            direct = ctx.attr.src.files.to_list(),
+            direct = pandoc_inputs,
             transitive = [toolchain.pandoc.files],
         ),
         outputs = [ctx.outputs.output],
     )
     return [
-        DefaultInfo(files = depset(all_outputs),
-        runfiles = ctx.runfiles(files=all_outputs))
+        DefaultInfo(files = depset([ctx.outputs.output] + data_outputs ),
+        runfiles = ctx.runfiles(files=data_outputs))
     ]
 
 _pandoc = rule(
@@ -95,6 +109,8 @@ _pandoc = rule(
         "css": attr.label(allow_single_file = True, mandatory = False),
         "data": attr.label_list(mandatory = False),
         "to_format": attr.string(),
+        "standalone" : attr.bool(),
+        "self_contained" : attr.bool(),
         "output": attr.output(mandatory = True),
     },
     toolchains = ["@bazel_pandoc//:pandoc_toolchain_type"],
