@@ -85,7 +85,7 @@ def _pandoc_impl(ctx):
                                     output = outfile,
                                     substitutions={})
     cli_args.extend(ctx.attr.options)
-    cli_args.extend([ctx.file.src.path])
+    cli_args.extend([f.path for f in ctx.attr.src.files.to_list()])
     ctx.actions.run(
         mnemonic = "Pandoc",
         executable = toolchain.pandoc.files.to_list()[0].path,
