@@ -52,29 +52,49 @@ PANDOC_EXTENSIONS = {
 def _pandoc_impl(ctx):
     toolchain = ctx.toolchains["@bazel_pandoc//:pandoc_toolchain_type"]
     cli_args = []
+    all_outputs = [ctx.outputs.output]
+    all_data_inputs = []
+    all_data_inputs.extend(ctx.attr.data)
     cli_args.extend(ctx.attr.options)
     if ctx.attr.from_format:
         cli_args.extend(["--from", ctx.attr.from_format])
     if ctx.attr.to_format:
         cli_args.extend(["--to", ctx.attr.to_format])
+    if ctx.attr.css and PANDOC_EXTENSIONS[ctx.attr.to_format] == "html":
+        all_data_inputs.extend([ctx.attr.css])
+        cli_args.extend(["-c", ctx.file.css.path])
     cli_args.extend(["-o", ctx.outputs.output.path])
     cli_args.extend([ctx.file.src.path])
+    for target in all_data_inputs:
+        for df in target.files.to_list():
+            print(df)
+            outfile = ctx.actions.declare_file(df.path)
+            all_outputs.extend([outfile])
+            ctx.actions.expand_template(template=df,
+                                        output = outfile,
+                                        substitutions={})
     ctx.actions.run(
         mnemonic = "Pandoc",
         executable = toolchain.pandoc.files.to_list()[0].path,
         arguments = cli_args,
         inputs = depset(
-            direct = ctx.files.src,
+            direct = ctx.attr.src.files.to_list() + ctx.attr.css.files.to_list(),
             transitive = [toolchain.pandoc.files],
         ),
         outputs = [ctx.outputs.output],
     )
+    return [
+        DefaultInfo(files = depset(all_outputs),
+        runfiles = ctx.runfiles(files=all_outputs))
+    ]
 
 _pandoc = rule(
     attrs = {
         "from_format": attr.string(),
         "options": attr.string_list(),
         "src": attr.label(allow_single_file = True, mandatory = True),
+        "css": attr.label(allow_single_file = True, mandatory = False),
+        "data": attr.label_list(mandatory = False),
         "to_format": attr.string(),
         "output": attr.output(mandatory = True),
     },
