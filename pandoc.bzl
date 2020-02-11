@@ -60,14 +60,13 @@ def _pandoc_impl(ctx):
         cli_args.extend(["--from", ctx.attr.from_format])
     if ctx.attr.to_format:
         cli_args.extend(["--to", ctx.attr.to_format])
-    if ctx.attr.css and PANDOC_EXTENSIONS[ctx.attr.to_format] == "html":
+    if ctx.attr.css:
         all_data_inputs.extend([ctx.attr.css])
         cli_args.extend(["-c", ctx.file.css.path])
     cli_args.extend(["-o", ctx.outputs.output.path])
     cli_args.extend([ctx.file.src.path])
     for target in all_data_inputs:
         for df in target.files.to_list():
-            print(df)
             outfile = ctx.actions.declare_file(df.path)
             all_outputs.extend([outfile])
             ctx.actions.expand_template(template=df,
