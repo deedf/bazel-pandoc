@@ -66,12 +66,12 @@ def _pandoc_impl(ctx):
         cli_args.extend(["--to", ctx.attr.to_format])
     if ctx.attr.css:
         pandoc_inputs.extend([ctx.file.css])
-        cli_args.extend(["-c", ctx.file.css.path])
+        cli_args.extend(["-c", ctx.file.css.basename])
         if not ctx.attr.self_contained:
             data_inputs.extend([ctx.file.css])
     cli_args.extend(["-o", ctx.outputs.output.path])
     cli_args.extend(["--resource-path",
-                     ctx.label.workspace_root])
+                     ctx.label.package])
     for target in ctx.attr.data:
         for df in target.files.to_list():
             if ctx.attr.self_contained:
