@@ -1,3 +1,4 @@
+"Bazel Pandoc rule"
 PANDOC_EXTENSIONS = {
     "asciidoc": "adoc",
     "beamer": "tex",
@@ -133,6 +134,10 @@ def _infer_output(name, to_format):
     return name + "." + ext
 
 def pandoc(**kwargs):
+"""Call Pandoc.
+    Args:
+        **kwargs: kwargs
+"""
     if "output" not in kwargs:
         if "to_format" not in kwargs:
             fail("One of `output` or `to_format` attributes must be provided")
